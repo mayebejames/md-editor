@@ -783,6 +783,87 @@ function smartEnter() {
   return true;
 }
 
+/* ---------- hard wrap in lists ---------- */
+
+// While typing inside a numbered or bulleted list item, lines are hard-wrapped at
+// this many characters. Wrapped lines hang under the item's text.
+const WRAP_COL = 90;
+const BULLET_RE = /^[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]+(?:\[[ xX]\][ \t]+)?/;
+const SENTINEL = ''; // marks the caret while text is rebuilt
+
+// If the line containing pos is part of a list item, returns its bounds and the
+// indent that wrapped lines should get; otherwise null.
+function listLine(v, pos) {
+  const ls = v.lastIndexOf('\n', pos - 1) + 1;
+  let le = v.indexOf('\n', pos);
+  if (le < 0) le = v.length;
+  const line = v.slice(ls, le);
+  const m = BULLET_RE.exec(line);
+  if (m) return { ls, le, hang: m[0].replace(/[^\t]/g, ' ') };
+
+  // an indented continuation line, in a paragraph that starts with a list item
+  const ind = /^[ \t]+/.exec(line);
+  if (!ind || !line.trim()) return null;
+  for (let p = ls; p > 0;) {
+    const ps = v.lastIndexOf('\n', p - 2) + 1;
+    const prev = v.slice(ps, p - 1);
+    if (!prev.trim()) return null;
+    if (BULLET_RE.test(prev)) return { ls, le, hang: ind[0] };
+    p = ps;
+  }
+  return null;
+}
+
+const visibleLength = s => s.length - (s.includes(SENTINEL) ? 1 : 0);
+
+// Wrap the caret's line if it has grown past WRAP_COL, carrying the overflow into
+// the item's next continuation line (and onwards) so editing mid-item reflows it.
+function hardWrap() {
+  const caret = ed.selectionStart;
+  if (caret !== ed.selectionEnd) return;
+  const v = ed.value;
+  const info = listLine(v, caret);
+  if (!info || info.le - info.ls <= WRAP_COL) return;
+
+  const { ls, hang } = info;
+  let end = info.le;
+  let text = v.slice(ls, caret) + SENTINEL + v.slice(caret, end);
+  let head = BULLET_RE.exec(v.slice(ls, end))?.[0].length ?? hang.length;
+  const out = [];
+
+  while (visibleLength(text) > WRAP_COL) {
+    // last space that leaves the line within the limit and isn't in the marker/indent
+    let cut = -1;
+    for (let i = text.length - 1; i > head; i--) {
+      if (text[i] === ' ' && visibleLength(text.slice(0, i)) <= WRAP_COL) { cut = i; break; }
+    }
+    if (cut < 0) break; // one unbreakable word
+
+    out.push(text.slice(0, cut).replace(/ +$/, ''));
+    const rest = text.slice(cut).replace(/^ +/, '');
+    text = hang + rest;
+    head = hang.length;
+
+    // reflow into the next line if it continues this item at the same indent
+    if (end < v.length) {
+      let ne = v.indexOf('\n', end + 1);
+      if (ne < 0) ne = v.length;
+      const next = v.slice(end + 1, ne);
+      if (next.trim() && /^[ \t]*/.exec(next)[0] === hang && !BULLET_RE.test(next)) {
+        text = hang + rest + ' ' + next.slice(hang.length);
+        end = ne;
+      }
+    }
+  }
+  out.push(text);
+
+  const joined = out.join('\n');
+  const newCaret = ls + joined.indexOf(SENTINEL);
+  const result = joined.replace(SENTINEL, '');
+  if (result === v.slice(ls, end)) return;
+  replaceRange(ls, end, result, newCaret);
+}
+
 function indentLines(outdent) {
   const { selectionStart: s, selectionEnd: e, value: v } = ed;
   const ls = v.lastIndexOf('\n', s - 1) + 1;
@@ -1079,7 +1160,14 @@ ed.addEventListener('keydown', e => {
   }
 });
 
-ed.addEventListener('input', () => {
+let wrapping = false;
+ed.addEventListener('input', e => {
+  // only while typing: not pastes, drops, undo or IME composition
+  if (!wrapping && !e.isComposing &&
+      (e.inputType === 'insertText' || e.inputType === 'insertReplacementText')) {
+    wrapping = true;
+    try { hardWrap(); } finally { wrapping = false; }
+  }
   if (find.open) {
     computeMatches(ed.selectionStart);
     updateFindCount();

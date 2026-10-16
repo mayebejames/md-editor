@@ -51,6 +51,7 @@ date: 17^th^ October 2026
   - Cmd+E `` `code` ``
   - The same actions are on toolbar buttons, so phones can use them too.
 - **Smart lists:** Enter continues `- `, `* `, `+ `, `1. ` (incremented), `- [ ] ` and `> `. Enter on an empty item ends the list. Tab/Shift+Tab indent/outdent the current line(s) by 4 spaces.
+- **Hard wrap in lists (only there):** while typing in a numbered or bulleted list item (including task items and their indented continuation lines), a line longer than 90 characters (`WRAP_COL`) breaks at the last space that fits. The new line is indented to line up under the item's text. Typing mid-item pushes the overflow into the item's following lines. Only typing triggers it (`insertText` / `insertReplacementText`), not paste, undo or IME composition. Paragraphs, quotes and everything else are never wrapped.
 - **Fenced divs:** Enter at the end of an opening fence (`::: Name`, `:::: {.class}`) inserts a matching closing fence with the cursor on the line between. It only does this when the document has an unclosed fence, so the scaffold's `::: References` block isn't doubled.
 - **Phone toolbar:** formatting buttons act on `touchend` and cancel `touchstart`, so tapping them doesn't blur the textarea, close the keyboard or lose the selection.
 - **Find & replace:** Cmd+F opens it. It has next/previous, replace, replace all, a case-sensitive toggle and a match count. Matches are highlighted by a mirror layer behind the transparent textarea.

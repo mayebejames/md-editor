@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>untitled.md</title>
+<style>
+/* Equity — served by the website; fails silently under file:// and falls back. */
+@font-face { font-family: equity_a; font-style: normal; font-weight: normal; font-stretch: normal; font-display: auto;
+  src: url('/src/font/equity_a_regular.woff2') format('woff2'); }
+@font-face { font-family: equity_a; font-style: italic; font-weight: normal; font-stretch: normal; font-display: auto;
+  src: url('/src/font/equity_a_italic.woff2') format('woff2'); }
+@font-face { font-family: equity_a; font-style: normal; font-weight: bold; font-stretch: normal; font-display: auto;
+  src: url('/src/font/equity_a_bold.woff2') format('woff2'); }
+@font-face { font-family: equity_a; font-style: italic; font-weight: bold; font-stretch: normal; font-display: auto;
+  src: url('/src/font/equity_a_bold_italic.woff2') format('woff2'); }
+
+:root {
+  --bg: #fbfaf7;
+  --fg: #1f1f1d;
+  --muted: #76746e;
+  --line: #e4e1da;
+  --panel: rgba(251, 250, 247, .88);
+  --raised: #ffffff;
+  --hover: rgba(0, 0, 0, .06);
+  --accent: #2f62c9;
+  --mark: rgba(255, 196, 0, .35);
+  --mark-cur: rgba(255, 128, 0, .55);
+  --shadow: 0 8px 28px rgba(0, 0, 0, .14);
+
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --serif: "Equity A", equity_a, Charter, "Bitstream Charter", Georgia, serif;
+  --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+  /* user settings (overridden from JS) */
+  --font: var(--mono);
+  --fs: 17px;
+  --col: 90;
+  --gutter: 24px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1b1d;
+    --fg: #e6e4df;
+    --muted: #9a978f;
+    --line: #34343a;
+    --panel: rgba(27, 27, 29, .88);
+    --raised: #26262a;
+    --hover: rgba(255, 255, 255, .08);
+    --accent: #7aa2f7;
+    --mark: rgba(255, 196, 0, .25);
+    --mark-cur: rgba(255, 140, 0, .5);
+    --shadow: 0 8px 28px rgba(0, 0, 0, .5);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--ui);
+  font-size: 15px;
+}
+button, input { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+
+/* ---------- header ---------- */
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--panel);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid var(--line);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.bar {
+  display: flex; align-items: center; gap: 4px;
+  height: 48px; padding: 0 8px;
+}
+.name {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+#fileName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dirty { color: var(--accent); font-size: 10px; }
+.tools { display: flex; gap: 2px; }
+
+.icon {
+  display: inline-grid; place-items: center;
+  width: 36px; height: 36px;
+  border: 0; border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+}
+.icon:hover { background: var(--hover); }
+.icon[aria-pressed="true"] { background: var(--hover); color: var(--accent); }
+.icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon b, .icon i { font-family: Georgia, serif; font-size: 17px; }
+
+/* ---------- file menu ---------- */
+.menu-wrap { position: relative; }
+.menu {
+  position: absolute; top: 42px; left: 0;
+  min-width: 230px; padding: 6px;
+  background: var(--raised);
+  border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.menu button {
+  display: flex; justify-content: space-between; align-items: center; gap: 24px;
+  width: 100%; padding: 8px 10px;
+  border: 0; border-radius: 6px; background: transparent;
+  text-align: left; cursor: pointer;
+}
+.menu button:hover, .menu button:focus-visible { background: var(--hover); outline: none; }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+kbd { font-family: var(--ui); font-size: 12px; color: var(--muted); }
+
+/* ---------- find bar ---------- */
+.find {
+  display: flex; flex-wrap: wrap; gap: 6px 8px;
+  padding: 0 8px 8px;
+}
+.find .row { display: flex; align-items: center; gap: 2px; flex: 1 1 320px; min-width: 0; }
+.find input[type="text"] {
+  flex: 1; min-width: 0; height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--raised);
+  font-size: 15px;
+  outline: none;
+}
+.find input[type="text"]:focus { border-color: var(--accent); }
+.find .count { min-width: 64px; text-align: center; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.find .text {
+  height: 34px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--raised); cursor: pointer; white-space: nowrap;
+  font-size: 14px;
+}
+.find .text:hover { background: var(--hover); }
+
+/* ---------- banner ---------- */
+.banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  width: calc(100% - 2 * var(--gutter));
+  max-width: calc(var(--col) * 1ch);
+  margin: 16px auto 0; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--raised);
+  font-size: 14px;
+  /* so 1ch matches the editor column */
+  font-family: var(--font);
+}
+.banner span { font-family: var(--ui); flex: 1 1 200px; }
+.banner button {
+  font-family: var(--ui);
+  padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: transparent; cursor: pointer;
+}
+.banner button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ---------- editor ---------- */
+main {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.editor {
+  display: grid;
+  max-width: calc(var(--col) * 1ch + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: 28px var(--gutter) 45vh;
+  font-family: var(--font);
+  font-size: var(--fs);
+  cursor: text;
+}
+.editor > .mirror,
+.editor > textarea {
+  grid-area: 1 / 1;
+  margin: 0; padding: 0; border: 0;
+  font: inherit;
+  line-height: 1.6;
+  letter-spacing: normal;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  tab-size: 4;
+}
+.mirror {
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.mirror mark { background: var(--mark); color: transparent; border-radius: 2px; }
+.mirror mark.cur { background: var(--mark-cur); }
+textarea {
+  width: 100%; height: 100%;
+  min-height: 50vh;
+  background: transparent;
+  color: var(--fg);
+  caret-color: var(--accent);
+  resize: none;
+  overflow: hidden;
+  outline: none;
+}
+textarea::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* ---------- settings dialog ---------- */
+dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--raised); color: var(--fg);
+  box-shadow: var(--shadow);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .3); }
+dialog h2 { margin: 0 0 16px; font-size: 17px; }
+.field { margin-bottom: 18px; }
+.field > label, .field legend { display: flex; justify-content: space-between; font-weight: 600; font-size: 14px; margin-bottom: 8px; padding: 0; }
+.field output { font-weight: 400; color: var(--muted); }
+fieldset { border: 0; margin: 0 0 18px; padding: 0; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg label { flex: 1; text-align: center; padding: 8px; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--accent); color: #fff; }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.seg .mono-sample { font-family: var(--mono); }
+.seg .serif-sample { font-family: var(--serif); font-size: 16px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.dialog-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.dialog-actions button {
+  padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: transparent; cursor: pointer;
+}
+.dialog-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translate(-50%, 20px);
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--fg); color: var(--bg);
+  font-size: 14px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- small screens / touch ---------- */
+@media (max-width: 600px) {
+  :root { --gutter: 16px; }
+  .bar { padding: 0 4px; gap: 0; }
+  .editor { padding-top: 18px; }
+  .find .count { min-width: 48px; }
+}
+@media (pointer: coarse) {
+  /* iOS zooms into inputs under 16px */
+  .editor { font-size: max(16px, var(--fs)); }
+  .find input[type="text"] { font-size: 16px; }
+  .icon { width: 40px; height: 40px; }
+  kbd { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="menu-wrap">
+      <button id="menuBtn" class="icon" aria-label="File menu" aria-haspopup="menu" aria-expanded="false" title="File">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div id="menu" class="menu" role="menu" hidden>
+        <button role="menuitem" data-act="new">New</button>
+        <button role="menuitem" data-act="open">Open… <kbd data-kbd="O"></kbd></button>
+        <button role="menuitem" data-act="save">Save <kbd data-kbd="S"></kbd></button>
+        <button role="menuitem" data-act="saveAs">Save As… <kbd data-kbd="⇧S"></kbd></button>
+        <hr>
+        <button role="menuitem" data-act="restore" id="restoreItem" hidden>Restore previous session</button>
+        <button role="menuitem" data-act="settings">Settings…</button>
+      </div>
+    </div>
+    <div class="name"><span id="fileName">untitled.md</span><span id="dirty" class="dirty" title="Unsaved changes" hidden>●</span></div>
+    <div class="tools">
+      <button class="icon" data-act="bold" data-tip="Bold|B" aria-label="Bold"><b>B</b></button>
+      <button class="icon" data-act="italic" data-tip="Italic|I" aria-label="Italic"><i>I</i></button>
+      <button class="icon" data-act="link" data-tip="Link|K" aria-label="Link">
+        <svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>
+      </button>
+      <button class="icon" data-act="code" data-tip="Code|E" aria-label="Code">
+        <svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>
+      </button>
+      <button class="icon" data-act="find" data-tip="Find & replace|F" aria-label="Find and replace" id="findBtn">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="findBar" class="find" hidden>
+    <div class="row">
+      <input id="findInput" type="text" placeholder="Find" aria-label="Find" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+      <span id="findCount" class="count" aria-live="polite"></span>
+      <button id="caseBtn" class="icon" aria-pressed="false" aria-label="Match case" title="Match case" style="font-size:13px">Aa</button>
+      <button class="icon" data-act="findPrev" aria-label="Previous match" title="Previous (⇧Enter)">
+        <svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
+      <button class="icon" data-act="findNext" aria-label="Next match" title="Next (Enter)">
+        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <button class="icon" data-act="closeFind" aria-label="Close find" title="Close (Esc)">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="row">
+      <input id="replaceInput" type="text" placeholder="Replace with" aria-label="Replace with" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="text" data-act="replace">Replace</button>
+      <button class="text" data-act="replaceAll">All</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div id="banner" class="banner" hidden>
+    <span>Unsaved work from <strong id="bannerTime"></strong> is available.</span>
+    <button class="primary" data-act="restore">Restore</button>
+    <button data-act="dismiss">Dismiss</button>
+  </div>
+  <div class="editor" id="editor">
+    <div id="mirror" class="mirror" aria-hidden="true"></div>
+    <textarea id="ed" aria-label="Markdown document" spellcheck="true" autocapitalize="sentences"></textarea>
+  </div>
+</main>
+
+<dialog id="settings">
+  <form method="dialog">
+    <h2>Settings</h2>
+    <fieldset class="field">
+      <legend>Font</legend>
+      <div class="seg">
+        <label class="mono-sample"><input type="radio" name="font" value="mono">Monospace</label>
+        <label class="serif-sample"><input type="radio" name="font" value="serif">Equity</label>
+      </div>
+    </fieldset>
+    <div class="field">
+      <label for="sizeInput">Text size <output id="sizeOut"></output></label>
+      <input id="sizeInput" type="range" min="12" max="32" step="1">
+    </div>
+    <div class="field">
+      <label for="colInput">Column width <output id="colOut"></output></label>
+      <input id="colInput" type="range" min="40" max="160" step="5">
+    </div>
+    <div class="dialog-actions">
+      <button type="button" data-act="resetSettings">Reset</button>
+      <button class="primary" value="close">Done</button>
+    </div>
+  </form>
+</dialog>
+
+<input id="fileInput" type="file" hidden>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+const $ = s => document.querySelector(s);
+const ed = $('#ed');
+const mirror = $('#mirror');
+
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+const coarse = matchMedia('(pointer: coarse)').matches;
+const canFS = 'showOpenFilePicker' in window && 'showSaveFilePicker' in window;
+
+const KEY_AUTO = 'mded.autosave';
+const KEY_PREV = 'mded.previous';
+const KEY_SET = 'mded.settings';
+const DEFAULTS = { font: 'mono', size: 17, col: 90 };
+const FILE_TYPES = [{ description: 'Markdown', accept: { 'text/plain': ['.md', '.markdown', '.txt'] } }];
+
+// localStorage can throw (private mode, blocked storage), so every access is guarded.
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+const state = {
+  fileName: null,   // name of the file on disk, once opened or saved via picker
+  handle: null,     // FileSystemFileHandle (Chrome/Edge only)
+  savedText: '',    // text as last opened/saved; null = never matches (restored work)
+  onDisk: false,
+};
+
+/* ================= scaffold & names ================= */
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December'];
+
+function ordinal(n) {
+  const t = n % 100;
+  if (t >= 11 && t <= 13) return 'th';
+  return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th';
+}
+
+// e.g. 2^nd^ September 2026
+function prettyDate(d = new Date()) {
+  const n = d.getDate();
+  return `${n}^${ordinal(n)}^ ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function scaffold() {
+  return [
+    '---',
+    'title: ',
+    'date: ' + prettyDate(),
+    '---',
+    '', '', '', '',
+    '# References',
+    '',
+    '::: References',
+    '',
+    ':::',
+    '',
+  ].join('\n');
+}
+
+const withoutDate = t => t.replace(/^date:.*$/m, 'date:');
+const isScaffold = t => withoutDate(t) === withoutDate(scaffold());
+
+function frontTitle(text) {
+  const fm = /^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(text);
+  if (!fm) return '';
+  const t = /^title:[ \t]*(.*)$/m.exec(fm[1]);
+  return t ? t[1].trim().replace(/^(['"])(.*)\1$/, '$2') : '';
+}
+
+function slug(s) {
+  return s.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+}
+
+function suggestedName() {
+  return state.fileName || (slug(frontTitle(ed.value)) || 'untitled') + '.md';
+}
+
+/* ================= document state ================= */
+
+const isDirty = () => ed.value !== state.savedText;
+
+function updateChrome() {
+  const name = suggestedName();
+  const dirty = isDirty();
+  $('#fileName').textContent = name;
+  $('#dirty').hidden = !dirty;
+  document.title = (dirty ? '• ' : '') + name;
+}
+
+function renderMirror() {
+  const v = ed.value;
+  if (!find.open || !find.matches.length) {
+    // trailing space keeps a final empty line from collapsing
+    mirror.textContent = v + ' ';
+  } else {
+    const len = find.len;
+    let html = '', last = 0;
+    find.matches.forEach((m, i) => {
+      html += esc(v.slice(last, m)) +
+        (i === find.cur ? '<mark class="cur">' : '<mark>') + esc(v.slice(m, m + len)) + '</mark>';
+      last = m + len;
+    });
+    mirror.innerHTML = html + esc(v.slice(last)) + ' ';
+  }
+  // the textarea can scroll itself for a frame before the mirror grows it
+  ed.scrollTop = 0;
+}
+
+function esc(s) {
+  return s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+
+function setDoc(text, { name = null, handle = null, onDisk = false, caret = 0 } = {}) {
+  ed.value = text;
+  state.fileName = name;
+  state.handle = handle;
+  state.savedText = text;
+  state.onDisk = onDisk;
+  if (find.open) computeMatches();
+  renderMirror();
+  updateChrome();
+  ed.setSelectionRange(caret, caret);
+  window.scrollTo(0, 0);
+}
+
+function newDoc() {
+  const text = scaffold();
+  setDoc(text, { caret: text.indexOf('title: ') + 7 });
+}
+
+function markSaved(text) {
+  state.savedText = text;
+  state.onDisk = true;
+  updateChrome();
+  autosave();
+}
+
+function confirmDiscard() {
+  return !isDirty() || confirm('You have unsaved changes. Discard them?');
+}
+
+/* ================= autosave ================= */
+
+let autosaveTimer;
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(autosave, 400);
+}
+function autosave() {
+  clearTimeout(autosaveTimer);
+  store.set(KEY_AUTO, {
+    text: ed.value,
+    name: state.fileName,
+    at: Date.now(),
+    saved: state.onDisk && !isDirty(),
+  });
+}
+
+function offerPrevious() {
+  const prev = store.get(KEY_AUTO);
+  if (prev && prev.text && prev.text.trim() && !prev.saved && !isScaffold(prev.text)) {
+    store.set(KEY_PREV, prev);
+  }
+  const p = store.get(KEY_PREV);
+  if (!p) return;
+  const when = new Date(p.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  $('#bannerTime').textContent = when;
+  $('#banner').hidden = false;
+  $('#restoreItem').hidden = false;
+}
+
+function restorePrevious() {
+  const p = store.get(KEY_PREV);
+  if (!p || !confirmDiscard()) return;
+  setDoc(p.text, { name: p.name, caret: 0 });
+  state.savedText = null; // restored work isn't on disk
+  updateChrome();
+  autosave();
+  store.del(KEY_PREV);
+  $('#banner').hidden = true;
+  $('#restoreItem').hidden = true;
+  ed.focus();
+}
+
+/* ================= open / save ================= */
+
+async function loadFile(file, handle = null) {
+  try {
+    const text = await file.text();
+    setDoc(text, { name: file.name, handle, onDisk: true });
+    ed.focus();
+    toast('Opened ' + file.name);
+  } catch (e) {
+    console.error(e);
+    toast('Could not read that file');
+  }
+}
+
+async function openFile() {
+  if (!confirmDiscard()) return;
+  if (canFS) {
+    try {
+      const [h] = await showOpenFilePicker({ types: FILE_TYPES });
+      await loadFile(await h.getFile(), h);
+    } catch (e) {
+      if (e.name !== 'AbortError') { console.error(e); toast('Could not open file'); }
+    }
+    return;
+  }
+  const input = $('#fileInput');
+  input.value = '';
+  input.click();
+}
+
+function download(text, name) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+async function save(saveAs = false) {
+  const text = ed.value;
+
+  if (canFS) {
+    try {
+      let h = saveAs ? null : state.handle;
+      if (!h) h = await showSaveFilePicker({ suggestedName: suggestedName(), types: FILE_TYPES });
+      const w = await h.createWritable();
+      await w.write(text);
+      await w.close();
+      state.handle = h;
+      state.fileName = h.name;
+      markSaved(text);
+      toast('Saved ' + h.name);
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      console.error(e);
+      const name = suggestedName();
+      download(text, name);
+      markSaved(text);
+      toast('Downloaded ' + name);
+    }
+    return;
+  }
+
+  const name = suggestedName();
+  // On phones the share sheet offers "Save to Files" with a folder choice.
+  if (coarse && navigator.canShare) {
+    const file = new File([text], name, { type: 'text/plain' });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        markSaved(text);
+        toast('Saved ' + name);
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        console.error(e);
+      }
+    }
+  }
+  download(text, name);
+  markSaved(text);
+  toast('Downloaded ' + name);
+}
+
+/* ================= editing primitives ================= */
+
+// Replace [start, end) keeping native undo where the browser allows it.
+function replaceRange(start, end, text, selStart, selEnd) {
+  ed.focus();
+  ed.setSelectionRange(start, end);
+  let ok = false;
+  try {
+    ok = text === '' ? (start === end || document.execCommand('delete'))
+                     : document.execCommand('insertText', false, text);
+  } catch {}
+  if (!ok) {
+    ed.setRangeText(text, start, end, 'end');
+    ed.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  if (selStart != null) ed.setSelectionRange(selStart, selEnd ?? selStart);
+}
+
+const runBefore = (v, i, ch) => { let n = 0; while (i - n - 1 >= 0 && v[i - n - 1] === ch) n++; return n; };
+const runAfter = (v, i, ch) => { let n = 0; while (v[i + n] === ch) n++; return n; };
+const WORD = /[\p{L}\p{N}_'’]/u;
+
+// Is the text between s and e wrapped by `mark` immediately outside it?
+function wrappedOutside(v, s, e, mark) {
+  const ch = mark[0];
+  const b = runBefore(v, s, ch), a = runAfter(v, e, ch);
+  if (mark === '*') return b % 2 === 1 && a % 2 === 1; // * or *** but not **
+  return b >= mark.length && a >= mark.length;
+}
+
+function wrappedInside(sel, mark) {
+  if (sel.length < mark.length * 2 || !sel.startsWith(mark) || !sel.endsWith(mark)) return false;
+  if (mark === '*') return !(sel.startsWith('**') && !sel.startsWith('***'));
+  return true;
+}
+
+function toggleWrap(mark) {
+  const v = ed.value;
+  let s = ed.selectionStart, e = ed.selectionEnd;
+
+  // no selection inside a word: act on the whole word
+  if (s === e && (WORD.test(v[s - 1] || '') || WORD.test(v[s] || ''))) {
+    while (s > 0 && WORD.test(v[s - 1])) s--;
+    while (e < v.length && WORD.test(v[e])) e++;
+  }
+  const caretOffset = ed.selectionStart - s;
+  const L = mark.length;
+  const sel = v.slice(s, e);
+
+  if (wrappedOutside(v, s, e, mark)) {
+    const plainCaret = ed.selectionStart === ed.selectionEnd;
+    replaceRange(s - L, e + L, sel);
+    if (plainCaret) ed.setSelectionRange(s - L + caretOffset, s - L + caretOffset);
+    else ed.setSelectionRange(s - L, e - L);
+  } else if (wrappedInside(sel, mark)) {
+    replaceRange(s, e, sel.slice(L, -L), s, e - 2 * L);
+  } else if (s === e) {
+    replaceRange(s, e, mark + mark, s + L);
+  } else {
+    const plainCaret = ed.selectionStart === ed.selectionEnd;
+    replaceRange(s, e, mark + sel + mark);
+    if (plainCaret) ed.setSelectionRange(s + L + caretOffset, s + L + caretOffset);
+    else ed.setSelectionRange(s + L, e + L);
+  }
+}
+
+function insertLink() {
+  const { selectionStart: s, selectionEnd: e, value: v } = ed;
+  const sel = v.slice(s, e);
+  if (/^(https?:\/\/|mailto:|www\.)\S+$/.test(sel)) {
+    replaceRange(s, e, `[](${sel})`, s + 1);
+  } else {
+    const text = `[${sel}]()`;
+    const caret = sel ? s + text.length - 1 : s + 1;
+    replaceRange(s, e, text, caret);
+  }
+}
+
+/* ---------- smart lists ---------- */
+
+const LIST_RE = /^([ \t]*)(?:([-*+])|(\d{1,9})([.)])|(>))([ \t]+)(\[[ xX]\][ \t]+)?/;
+
+function smartEnter() {
+  const { selectionStart: s, selectionEnd: e, value: v } = ed;
+  if (s !== e) return false;
+  const ls = v.lastIndexOf('\n', s - 1) + 1;
+  const m = LIST_RE.exec(v.slice(ls, s));
+  if (!m) return false;
+  const [whole, indent, bullet, num, delim, , gap, task] = m;
+  let le = v.indexOf('\n', s);
+  if (le < 0) le = v.length;
+
+  // empty item: end the list
+  if (s - ls === whole.length && v.slice(s, le).trim() === '') {
+    replaceRange(ls, le, '', ls);
+    return true;
+  }
+  const marker = bullet || (num ? (Number(num) + 1) + delim : '>');
+  replaceRange(s, s, '\n' + indent + marker + gap + (task ? '[ ] ' : ''));
+  return true;
+}
+
+function indentLines(outdent) {
+  const { selectionStart: s, selectionEnd: e, value: v } = ed;
+  const ls = v.lastIndexOf('\n', s - 1) + 1;
+  const multi = v.slice(s, e).includes('\n');
+  let lineEnd = v.indexOf('\n', ls);
+  if (lineEnd < 0) lineEnd = v.length;
+  const onList = LIST_RE.test(v.slice(ls, lineEnd));
+
+  if (!outdent && !multi && !onList) {
+    replaceRange(s, e, '    ');
+    return;
+  }
+  // a selection ending at the start of a line doesn't include that line
+  const last = e > s && v[e - 1] === '\n' ? e - 1 : e;
+  let be = v.indexOf('\n', last);
+  if (be < 0) be = v.length;
+
+  const lines = v.slice(ls, be).split('\n');
+  const changed = lines.map(l => outdent ? l.replace(/^( {1,4}|\t)/, '') : (l ? '    ' + l : l));
+  const block = changed.join('\n');
+  if (block === lines.join('\n')) return;
+
+  if (multi) {
+    replaceRange(ls, be, block, ls, ls + block.length);
+  } else {
+    const d = changed[0].length - lines[0].length;
+    replaceRange(ls, be, block, Math.max(ls, s + d), Math.max(ls, e + d));
+  }
+}
+
+/* ================= find & replace ================= */
+
+const find = { open: false, matches: [], cur: -1, len: 0, caseSensitive: false };
+const findInput = $('#findInput');
+const replaceInput = $('#replaceInput');
+
+function computeMatches(anchor = ed.selectionStart) {
+  const q = findInput.value;
+  find.matches = [];
+  find.len = q.length;
+  find.cur = -1;
+  if (!q) return;
+  const hay = find.caseSensitive ? ed.value : ed.value.toLowerCase();
+  const needle = find.caseSensitive ? q : q.toLowerCase();
+  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + needle.length)) {
+    find.matches.push(i);
+    if (find.matches.length >= 10000) break;
+  }
+  if (find.matches.length) {
+    const i = find.matches.findIndex(m => m >= anchor);
+    find.cur = i < 0 ? 0 : i;
+  }
+}
+
+function updateFindCount() {
+  const n = find.matches.length;
+  $('#findCount').textContent = !findInput.value ? '' : n ? `${find.cur + 1} of ${n}` : 'No results';
+}
+
+function revealCurrent() {
+  const el = mirror.querySelector('mark.cur');
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const top = $('header').getBoundingClientRect().bottom + 12;
+  const bottom = (window.visualViewport ? visualViewport.height : innerHeight) - 24;
+  if (r.top < top || r.bottom > bottom) {
+    window.scrollBy({ top: r.top - top - (bottom - top) / 3 });
+  }
+}
+
+function selectCurrent() {
+  const m = find.matches[find.cur];
+  if (m != null) ed.setSelectionRange(m, m + find.len);
+}
+
+function refreshFind(anchor) {
+  computeMatches(anchor);
+  renderMirror();
+  updateFindCount();
+  selectCurrent();
+  revealCurrent();
+}
+
+function findStep(dir) {
+  if (!find.open) { openFind(); return; }
+  const n = find.matches.length;
+  if (!n) return;
+  find.cur = (find.cur + dir + n) % n;
+  renderMirror();
+  updateFindCount();
+  selectCurrent();
+  revealCurrent();
+}
+
+function openFind() {
+  const sel = ed.value.slice(ed.selectionStart, ed.selectionEnd);
+  if (sel && !sel.includes('\n')) findInput.value = sel;
+  find.open = true;
+  $('#findBar').hidden = false;
+  $('#findBtn').setAttribute('aria-pressed', 'true');
+  findInput.focus();
+  findInput.select();
+  refreshFind(ed.selectionStart);
+}
+
+function closeFind() {
+  find.open = false;
+  $('#findBar').hidden = true;
+  $('#findBtn').setAttribute('aria-pressed', 'false');
+  renderMirror();
+  ed.focus({ preventScroll: true });
+}
+
+function replaceOne() {
+  const m = find.matches[find.cur];
+  if (m == null) return;
+  const r = replaceInput.value;
+  const y = window.scrollY;
+  replaceRange(m, m + find.len, r, m + r.length);
+  window.scrollTo(0, y);
+  replaceInput.focus({ preventScroll: true });
+  refreshFind(m + r.length);
+}
+
+function replaceAll() {
+  const n = find.matches.length;
+  if (!n) return;
+  const v = ed.value, r = replaceInput.value;
+  let out = '', last = 0;
+  for (const m of find.matches) { out += v.slice(last, m) + r; last = m + find.len; }
+  out += v.slice(last);
+  const y = window.scrollY;
+  replaceRange(0, v.length, out, 0);
+  window.scrollTo(0, y);
+  replaceInput.focus({ preventScroll: true });
+  refreshFind(0);
+  toast(`Replaced ${n} ${n === 1 ? 'match' : 'matches'}`);
+}
+
+findInput.addEventListener('input', () => refreshFind(Math.min(ed.selectionStart, find.matches[find.cur] ?? Infinity)));
+findInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); findStep(e.shiftKey ? -1 : 1); }
+});
+replaceInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); replaceOne(); }
+});
+$('#findBar').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
+});
+$('#caseBtn').addEventListener('click', e => {
+  find.caseSensitive = !find.caseSensitive;
+  e.currentTarget.setAttribute('aria-pressed', String(find.caseSensitive));
+  refreshFind(find.matches[find.cur] ?? ed.selectionStart);
+});
+
+/* ================= settings ================= */
+
+const settingsDlg = $('#settings');
+let settings = { ...DEFAULTS, ...(store.get(KEY_SET) || {}) };
+
+function applySettings() {
+  const root = document.documentElement.style;
+  root.setProperty('--font', settings.font === 'serif' ? 'var(--serif)' : 'var(--mono)');
+  root.setProperty('--fs', settings.size + 'px');
+  root.setProperty('--col', settings.col);
+  $('#sizeOut').textContent = settings.size + 'px';
+  $('#colOut').textContent = settings.col + ' ch';
+}
+
+function syncSettingsForm() {
+  settingsDlg.querySelector(`input[name="font"][value="${settings.font}"]`).checked = true;
+  $('#sizeInput').value = settings.size;
+  $('#colInput').value = settings.col;
+}
+
+settingsDlg.addEventListener('input', e => {
+  const t = e.target;
+  if (t.name === 'font') settings.font = t.value;
+  else if (t.id === 'sizeInput') settings.size = Number(t.value);
+  else if (t.id === 'colInput') settings.col = Number(t.value);
+  applySettings();
+  store.set(KEY_SET, settings);
+});
+settingsDlg.addEventListener('close', () => ed.focus({ preventScroll: true }));
+
+function openSettings() {
+  syncSettingsForm();
+  settingsDlg.showModal();
+}
+
+/* ================= menu, actions, keys ================= */
+
+const menu = $('#menu');
+const menuBtn = $('#menuBtn');
+
+function setMenu(open) {
+  menu.hidden = !open;
+  menuBtn.setAttribute('aria-expanded', String(open));
+  if (open) menu.querySelector('button').focus();
+}
+menuBtn.addEventListener('click', () => setMenu(menu.hidden));
+document.addEventListener('pointerdown', e => {
+  if (!menu.hidden && !e.target.closest('.menu-wrap')) setMenu(false);
+});
+menu.addEventListener('keydown', e => {
+  const items = [...menu.querySelectorAll('button:not([hidden])')];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { setMenu(false); menuBtn.focus(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+});
+
+const actions = {
+  new: () => { if (confirmDiscard()) { newDoc(); ed.focus(); } },
+  open: openFile,
+  save: () => save(false),
+  saveAs: () => save(true),
+  restore: restorePrevious,
+  dismiss: () => { $('#banner').hidden = true; },
+  settings: openSettings,
+  resetSettings: () => { settings = { ...DEFAULTS }; store.set(KEY_SET, settings); applySettings(); syncSettingsForm(); },
+  bold: () => toggleWrap('**'),
+  italic: () => toggleWrap('*'),
+  code: () => toggleWrap('`'),
+  link: insertLink,
+  find: () => (find.open ? closeFind() : openFind()),
+  findNext: () => findStep(1),
+  findPrev: () => findStep(-1),
+  closeFind,
+  replace: replaceOne,
+  replaceAll,
+};
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  if (btn.closest('.menu')) setMenu(false);
+  actions[btn.dataset.act]?.();
+});
+
+// Formatting buttons shouldn't steal focus (keeps the selection and the phone keyboard).
+document.querySelector('.tools').addEventListener('mousedown', e => {
+  if (e.target.closest('[data-act]:not([data-act="find"])')) e.preventDefault();
+});
+
+document.addEventListener('keydown', e => {
+  const mod = isMac ? e.metaKey : e.ctrlKey;
+  if (!mod || e.altKey) return;
+  const k = e.key.toLowerCase();
+  const inEditor = document.activeElement === ed;
+  let act = null;
+  if (k === 's') act = e.shiftKey ? 'saveAs' : 'save';
+  else if (k === 'o' && !e.shiftKey) act = 'open';
+  else if (k === 'f' && !e.shiftKey) act = 'openFind';
+  else if (k === 'g') act = e.shiftKey ? 'findPrev' : 'findNext';
+  else if (inEditor && !e.shiftKey) act = { b: 'bold', i: 'italic', k: 'link', e: 'code' }[k] || null;
+  if (!act) return;
+  e.preventDefault();
+  if (act === 'openFind') openFind(); else actions[act]();
+});
+
+ed.addEventListener('keydown', e => {
+  if (e.isComposing || e.keyCode === 229) return;
+  if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (smartEnter()) e.preventDefault();
+  } else if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    e.preventDefault();
+    indentLines(e.shiftKey);
+  }
+});
+
+ed.addEventListener('input', () => {
+  if (find.open) {
+    computeMatches(ed.selectionStart);
+    updateFindCount();
+  }
+  renderMirror();
+  updateChrome();
+  scheduleAutosave();
+});
+ed.addEventListener('scroll', () => { ed.scrollTop = 0; });
+
+// Clicking the empty space below the text puts the caret at the end.
+$('#main').addEventListener('mousedown', e => {
+  if (e.target === ed || e.target.closest('#banner')) return;
+  e.preventDefault();
+  ed.focus({ preventScroll: true });
+  ed.setSelectionRange(ed.value.length, ed.value.length);
+});
+
+$('#fileInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) loadFile(f);
+});
+
+/* ---------- drag & drop ---------- */
+
+window.addEventListener('dragover', e => {
+  if ([...e.dataTransfer.types].includes('Files')) e.preventDefault();
+});
+window.addEventListener('drop', async e => {
+  const item = [...e.dataTransfer.items].find(i => i.kind === 'file');
+  if (!item) return;
+  e.preventDefault();
+  // must be requested synchronously, before any await
+  const handlePromise = item.getAsFileSystemHandle ? item.getAsFileSystemHandle().catch(() => null) : null;
+  const file = item.getAsFile();
+  if (!file || !confirmDiscard()) return;
+  const handle = handlePromise ? await handlePromise : null;
+  loadFile(file, handle && handle.kind === 'file' ? handle : null);
+});
+
+/* ---------- leaving ---------- */
+
+window.addEventListener('beforeunload', e => {
+  autosave();
+  if (isDirty()) { e.preventDefault(); e.returnValue = ''; }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') autosave();
+});
+
+/* ---------- toast ---------- */
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ================= start ================= */
+
+(function init() {
+  const mod = isMac ? '⌘' : 'Ctrl+';
+  document.querySelectorAll('kbd[data-kbd]').forEach(k => {
+    const key = k.dataset.kbd;
+    k.textContent = key.startsWith('⇧') ? (isMac ? '⇧⌘' + key.slice(1) : 'Ctrl+Shift+' + key.slice(1)) : mod + key;
+  });
+  document.querySelectorAll('[data-tip]').forEach(b => {
+    const [label, key] = b.dataset.tip.split('|');
+    b.title = `${label} (${mod}${key})`;
+  });
+  if (!isIOS) $('#fileInput').accept = '.md,.markdown,.txt,text/markdown,text/plain';
+  if (!canFS) menu.querySelector('[data-act="saveAs"]').hidden = true;
+
+  applySettings();
+  offerPrevious();
+  newDoc();
+  if (!coarse) ed.focus({ preventScroll: true });
+})();
+</script>
+</body>
+</html>

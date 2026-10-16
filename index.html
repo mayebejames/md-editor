@@ -68,8 +68,11 @@ button, input { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 
 /* ---------- header ---------- */
+/* Fixed rather than sticky so JS can hold it at the top of the *visual* viewport
+   while the iOS keyboard is open (see pinHeader). --header-h is kept in sync by JS. */
+html { scroll-padding-top: calc(var(--header-h, 49px) + 12px); }
 header {
-  position: sticky; top: 0; z-index: 10;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10;
   background: var(--panel);
   -webkit-backdrop-filter: saturate(1.4) blur(12px);
   backdrop-filter: saturate(1.4) blur(12px);
@@ -100,7 +103,7 @@ header {
   cursor: pointer;
   font-size: 16px;
 }
-.icon:hover { background: var(--hover); }
+.icon:hover, .icon.pressed { background: var(--hover); }
 .icon[aria-pressed="true"] { background: var(--hover); color: var(--accent); }
 .icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .icon b, .icon i { font-family: Georgia, serif; font-size: 17px; }
@@ -170,6 +173,7 @@ kbd { font-family: var(--ui); font-size: 12px; color: var(--muted); }
 
 /* ---------- editor ---------- */
 main {
+  padding-top: var(--header-h, 49px);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
@@ -392,7 +396,7 @@ const FILE_TYPES = [{ description: 'Markdown', accept: { 'text/plain': ['.md', '
 // localStorage can throw (private mode, blocked storage), so every access is guarded.
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
 
@@ -528,7 +532,7 @@ function scheduleAutosave() {
 }
 function autosave() {
   clearTimeout(autosaveTimer);
-  store.set(KEY_AUTO, {
+  return store.set(KEY_AUTO, {
     text: ed.value,
     name: state.fileName,
     at: Date.now(),
@@ -731,10 +735,38 @@ function insertLink() {
 
 const LIST_RE = /^([ \t]*)(?:([-*+])|(\d{1,9})([.)])|(>))([ \t]+)(\[[ xX]\][ \t]+)?/;
 
+/* ---------- pandoc fenced divs ---------- */
+
+const FENCE_OPEN = /^(:{3,})[ \t]*[^\s:].*$/;   // ::: Name, :::{.class}, ::: {#id} ...
+const FENCE_CLOSE = /^:{3,}[ \t]*$/;
+
+// True if some opening fence in the document has no closing fence.
+function hasUnclosedFence(v) {
+  let open = 0;
+  for (const line of v.split('\n')) {
+    if (FENCE_OPEN.test(line)) open++;
+    else if (FENCE_CLOSE.test(line) && open > 0) open--;
+  }
+  return open > 0;
+}
+
+// Enter at the end of "::: Name" inserts the closing fence, caret on the blank line between.
+function closeFence(s, ls) {
+  const v = ed.value;
+  let le = v.indexOf('\n', s);
+  if (le < 0) le = v.length;
+  if (v.slice(s, le).trim() !== '') return false;
+  const m = FENCE_OPEN.exec(v.slice(ls, le));
+  if (!m || !hasUnclosedFence(v)) return false;
+  replaceRange(s, le, '\n\n' + m[1], s + 1);
+  return true;
+}
+
 function smartEnter() {
   const { selectionStart: s, selectionEnd: e, value: v } = ed;
   if (s !== e) return false;
   const ls = v.lastIndexOf('\n', s - 1) + 1;
+  if (closeFence(s, ls)) return true;
   const m = LIST_RE.exec(v.slice(ls, s));
   if (!m) return false;
   const [whole, indent, bullet, num, delim, , gap, task] = m;
@@ -992,8 +1024,33 @@ document.addEventListener('click', e => {
 });
 
 // Formatting buttons shouldn't steal focus (keeps the selection and the phone keyboard).
-document.querySelector('.tools').addEventListener('mousedown', e => {
-  if (e.target.closest('[data-act]:not([data-act="find"])')) e.preventDefault();
+const tools = document.querySelector('.tools');
+const formatBtn = target => target.closest('[data-act]:not([data-act="find"])');
+tools.addEventListener('mousedown', e => {
+  if (formatBtn(e.target)) e.preventDefault();
+});
+// On touch screens mousedown comes too late: the tap has already blurred the textarea
+// and closed the keyboard. Cancelling touchstart prevents that (and the synthetic click),
+// so the action runs on touchend instead.
+tools.addEventListener('touchstart', e => {
+  const b = formatBtn(e.target);
+  if (!b) return;
+  e.preventDefault();
+  b.classList.add('pressed');
+}, { passive: false });
+tools.addEventListener('touchend', e => {
+  const b = formatBtn(e.target);
+  if (!b || !b.classList.contains('pressed')) return;
+  e.preventDefault();
+  b.classList.remove('pressed');
+  const t = e.changedTouches[0];
+  const r = b.getBoundingClientRect();
+  if (t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom) {
+    actions[b.dataset.act]();
+  }
+}, { passive: false });
+tools.addEventListener('touchcancel', () => {
+  tools.querySelectorAll('.pressed').forEach(b => b.classList.remove('pressed'));
 });
 
 document.addEventListener('keydown', e => {
@@ -1063,11 +1120,43 @@ window.addEventListener('drop', async e => {
   loadFile(file, handle && handle.kind === 'file' ? handle : null);
 });
 
+/* ---------- header pinning ---------- */
+
+(function pinHeader() {
+  const header = $('header');
+  const root = document.documentElement.style;
+  const syncHeight = () => {
+    // scroll anchoring would otherwise scroll the top of the page under a growing header
+    const atTop = window.scrollY < 1;
+    root.setProperty('--header-h', header.offsetHeight + 'px');
+    if (atTop) window.scrollTo(0, 0);
+  };
+  syncHeight();
+  if (window.ResizeObserver) new ResizeObserver(syncHeight).observe(header);
+
+  // iOS doesn't shrink the layout viewport for the keyboard; it scrolls the visual
+  // viewport inside it, which carries fixed elements off screen. Follow it.
+  const vv = window.visualViewport;
+  if (!coarse || !vv) return;
+  let raf = 0;
+  const pin = () => {
+    raf = 0;
+    const y = Math.max(0, vv.offsetTop);
+    header.style.transform = y ? `translateY(${y}px)` : '';
+  };
+  const queue = () => { if (!raf) raf = requestAnimationFrame(pin); };
+  vv.addEventListener('resize', queue);
+  vv.addEventListener('scroll', queue);
+  window.addEventListener('scroll', queue, { passive: true });
+})();
+
 /* ---------- leaving ---------- */
 
 window.addEventListener('beforeunload', e => {
-  autosave();
-  if (isDirty()) { e.preventDefault(); e.returnValue = ''; }
+  const backedUp = autosave();
+  // Work is autosaved and offered back on the next launch, so only nag when the
+  // browser could have saved over the real file (Chrome/Edge) or the backup failed.
+  if (isDirty() && (canFS || !backedUp)) { e.preventDefault(); e.returnValue = ''; }
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') autosave();

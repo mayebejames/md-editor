@@ -19,7 +19,8 @@ A plain-text markdown editor that lives in a **single file, `index.html`**. It m
 2. **Browser autosave** (`localStorage`). This holds **one working document**, not a library.
    - The current text is autosaved (debounced) under `mded.autosave`.
    - **Launch always shows the scaffold.** If the previous session's autosave holds real work, it is copied to `mded.previous` and a "Restore previous session" banner/menu item is offered.
-   - The browser warns before unload and before New/Open when the text has changed since it was last opened or saved to disk.
+   - New/Open ask for confirmation when the text has changed since it was last opened or saved to disk.
+   - The browser's leave-page warning only fires in Chrome/Edge, where the real file could have been overwritten, or when the autosave failed. Elsewhere the autosave and restore offer cover it.
 
 ## Default scaffold
 
@@ -50,6 +51,8 @@ date: 17^th^ October 2026
   - Cmd+E `` `code` ``
   - The same actions are on toolbar buttons, so phones can use them too.
 - **Smart lists:** Enter continues `- `, `* `, `+ `, `1. ` (incremented), `- [ ] ` and `> `. Enter on an empty item ends the list. Tab/Shift+Tab indent/outdent the current line(s) by 4 spaces.
+- **Fenced divs:** Enter at the end of an opening fence (`::: Name`, `:::: {.class}`) inserts a matching closing fence with the cursor on the line between. It only does this when the document has an unclosed fence, so the scaffold's `::: References` block isn't doubled.
+- **Phone toolbar:** formatting buttons act on `touchend` and cancel `touchstart`, so tapping them doesn't blur the textarea, close the keyboard or lose the selection.
 - **Find & replace:** Cmd+F opens it. It has next/previous, replace, replace all, a case-sensitive toggle and a match count. Matches are highlighted by a mirror layer behind the transparent textarea.
 - **Other shortcuts:** Cmd+S save, Cmd+Shift+S save as, Cmd+O open.
 
@@ -79,5 +82,6 @@ date: 17^th^ October 2026
 ## Layout notes
 
 - The page (body) scrolls, not the textarea. The textarea and a mirror `<div>` share one CSS grid cell. The mirror sets the height, so the textarea grows with its content without any JS measuring. This also makes find highlighting line up exactly.
-- The header is sticky and has: a file menu (New, Open, Save, Save As, Restore previous, Settings), the filename with an unsaved dot, and buttons for B / I / link / code / find.
+- The header is `position: fixed`, not sticky. JS keeps `--header-h` (which sets `main`'s top padding) in sync with its height. On touch devices it is moved down by `visualViewport.offsetTop`, so it stays visible while the iOS keyboard is open.
+- The header has: a file menu (New, Open, Save, Save As, Restore previous, Settings), the filename with an unsaved dot, and buttons for B / I / link / code / find.
 - Testing: check at desktop width and at 375px (phone) in light and dark.

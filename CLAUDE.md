@@ -57,7 +57,7 @@ date: 17^th^ October 2026
 
 - Light/dark follows the system (`prefers-color-scheme`). There is no manual toggle.
 - **Fonts** (switchable in Settings; the choice is remembered in `mded.settings`):
-  - Default: system monospace (`ui-monospace, SF Mono, Menlo, Consolas, …`).
+  - Default: monospace, Menlo first (`Menlo, ui-monospace, SF Mono, Consolas, …`).
   - Proportional: `"Equity A"` (if installed locally) → `equity_a` (web font from the site, see below) → Charter → Georgia → serif.
 - **Font size** can be adjusted for both fonts.
 - **Text column** is centred, defaults to `90ch`, and its width can be adjusted in Settings. On phones it is the full width minus a 16px gutter.

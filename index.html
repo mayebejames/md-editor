@@ -768,8 +768,8 @@ function smartEnter() {
   const ls = v.lastIndexOf('\n', s - 1) + 1;
   if (closeFence(s, ls)) return true;
   const m = LIST_RE.exec(v.slice(ls, s));
-  if (!m) return false;
-  const [whole, indent, bullet, num, delim, , gap, task] = m;
+  if (!m) return continueWrappedItem(s, ls);
+  const whole = m[0];
   let le = v.indexOf('\n', s);
   if (le < 0) le = v.length;
 
@@ -778,8 +778,27 @@ function smartEnter() {
     replaceRange(ls, le, '', ls);
     return true;
   }
+  replaceRange(s, s, nextItemPrefix(m));
+  return true;
+}
+
+// "\n" plus the marker for the item after the one matched by LIST_RE.
+function nextItemPrefix([, indent, bullet, num, delim, , gap, task]) {
   const marker = bullet || (num ? (Number(num) + 1) + delim : '>');
-  replaceRange(s, s, '\n' + indent + marker + gap + (task ? '[ ] ' : ''));
+  return '\n' + indent + marker + gap + (task ? '[ ] ' : '');
+}
+
+// Enter on a hard-wrapped continuation line starts the next item, taking the
+// marker from the line where the item begins.
+function continueWrappedItem(s, ls) {
+  const v = ed.value;
+  const info = listLine(v, s);
+  if (!info || info.itemStart === ls || s - ls <= info.hang.length) return false;
+  let ie = v.indexOf('\n', info.itemStart);
+  if (ie < 0) ie = v.length;
+  const m = LIST_RE.exec(v.slice(info.itemStart, ie));
+  if (!m) return false;
+  replaceRange(s, s, nextItemPrefix(m));
   return true;
 }
 
@@ -799,7 +818,7 @@ function listLine(v, pos) {
   if (le < 0) le = v.length;
   const line = v.slice(ls, le);
   const m = BULLET_RE.exec(line);
-  if (m) return { ls, le, hang: m[0].replace(/[^\t]/g, ' ') };
+  if (m) return { ls, le, hang: m[0].replace(/[^\t]/g, ' '), itemStart: ls };
 
   // an indented continuation line, in a paragraph that starts with a list item
   const ind = /^[ \t]+/.exec(line);
@@ -808,7 +827,7 @@ function listLine(v, pos) {
     const ps = v.lastIndexOf('\n', p - 2) + 1;
     const prev = v.slice(ps, p - 1);
     if (!prev.trim()) return null;
-    if (BULLET_RE.test(prev)) return { ls, le, hang: ind[0] };
+    if (BULLET_RE.test(prev)) return { ls, le, hang: ind[0], itemStart: ps };
     p = ps;
   }
   return null;

@@ -1,10 +1,10 @@
 # Markdown Editor
 
-A plain-text markdown editor that lives in a **single file, `index.html`**. It must work both when double-clicked locally (`file://`) and when served from James's website. It should work well on an iMac, a laptop and a phone.
+A plain-text markdown editor that lives in a **single file, `editor.html`**. It must work both when double-clicked locally (`file://`) and when served from James's website, where it is deployed as `editor.html`. It should work well on an iMac, a laptop and a phone.
 
 ## Hard constraints
 
-- **One file.** All HTML, CSS and JS inline in `index.html`. No build step.
+- **One file.** All HTML, CSS and JS inline in `editor.html`. No build step.
 - **Zero dependencies.** No CDN scripts, no frameworks. Must work fully offline.
 - **Plain text only.** No rendered preview and no syntax highlighting. The editor is a native `<textarea>` so native undo, selection, autocorrect and spellcheck all keep working (especially on iOS).
 - Edits made by helpers (shortcuts, smart lists, replace) go through `document.execCommand('insertText')` so they stay on the native undo stack. Fall back to `setRangeText` only when that fails.

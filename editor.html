@@ -81,6 +81,7 @@ header {
   padding-right: env(safe-area-inset-right);
 }
 .bar {
+  position: relative;
   display: flex; align-items: center; gap: 4px;
   height: 48px; padding: 0 8px;
 }
@@ -94,6 +95,36 @@ header {
 #fileName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dirty { color: var(--accent); font-size: 10px; }
 .tools { display: flex; gap: 2px; }
+
+/* site links: quieter than the formatting buttons */
+.links {
+  display: flex; align-items: center; gap: 2px;
+  margin-right: 6px; padding-right: 8px;
+  border-right: 1px solid var(--line);
+}
+.links a {
+  padding: 6px 8px; border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.links a:hover, .links a:focus-visible { color: var(--fg); background: var(--hover); outline: none; }
+
+/* homepage link, centred on the bar, same colour as the formatting buttons */
+.home {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 6px 8px; border-radius: 6px;
+  color: var(--fg);
+  font-family: equity_a, "Equity A", Charter, "Bitstream Charter", Georgia, serif;
+  font-size: 17px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.home:hover, .home:focus-visible { background: var(--hover); outline: none; }
+/* which links sit in the bar and which move to the menu is decided by fitSiteLinks() */
+#fileName { max-width: 100%; }
 
 .icon {
   display: inline-grid; place-items: center;
@@ -117,13 +148,14 @@ header {
   border: 1px solid var(--line); border-radius: 10px;
   box-shadow: var(--shadow);
 }
-.menu button {
+.menu button, .menu a {
   display: flex; justify-content: space-between; align-items: center; gap: 24px;
   width: 100%; padding: 8px 10px;
   border: 0; border-radius: 6px; background: transparent;
   text-align: left; cursor: pointer;
 }
-.menu button:hover, .menu button:focus-visible { background: var(--hover); outline: none; }
+.menu-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.menu button:hover, .menu button:focus-visible, .menu a:hover, .menu a:focus-visible { background: var(--hover); outline: none; }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
 kbd { font-family: var(--ui); font-size: 12px; color: var(--muted); }
 
@@ -293,9 +325,20 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
         <hr>
         <button role="menuitem" data-act="restore" id="restoreItem" hidden>Restore previous session</button>
         <button role="menuitem" data-act="settings">Settings…</button>
+        <div class="menu-links" hidden>
+          <hr>
+          <a role="menuitem" data-link="home" href="/" target="_blank" rel="noopener" hidden>James Maye</a>
+          <a role="menuitem" data-link="doi" href="/doi.html" target="_blank" rel="noopener" hidden>Citations</a>
+          <a role="menuitem" data-link="table" href="/table.html" target="_blank" rel="noopener" hidden>Tables</a>
+        </div>
       </div>
     </div>
     <div class="name"><span id="fileName">untitled.md</span><span id="dirty" class="dirty" title="Unsaved changes" hidden>●</span></div>
+    <a class="home" data-link="home" href="/" target="_blank" rel="noopener">James Maye</a>
+    <nav class="links" aria-label="Site">
+      <a data-link="doi" href="/doi.html" target="_blank" rel="noopener">Citations</a>
+      <a data-link="table" href="/table.html" target="_blank" rel="noopener">Tables</a>
+    </nav>
     <div class="tools">
       <button class="icon" data-act="bold" data-tip="Bold|B" aria-label="Bold"><b>B</b></button>
       <button class="icon" data-act="italic" data-tip="Italic|I" aria-label="Italic"><i>I</i></button>
@@ -1084,11 +1127,12 @@ function setMenu(open) {
   if (open) menu.querySelector('button').focus();
 }
 menuBtn.addEventListener('click', () => setMenu(menu.hidden));
+menu.addEventListener('click', e => { if (e.target.closest('a')) setMenu(false); });
 document.addEventListener('pointerdown', e => {
   if (!menu.hidden && !e.target.closest('.menu-wrap')) setMenu(false);
 });
 menu.addEventListener('keydown', e => {
-  const items = [...menu.querySelectorAll('button:not([hidden])')];
+  const items = [...menu.querySelectorAll('button, a')].filter(el => el.offsetParent !== null);
   const i = items.indexOf(document.activeElement);
   if (e.key === 'Escape') { setMenu(false); menuBtn.focus(); }
   else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
@@ -1255,6 +1299,59 @@ window.addEventListener('drop', async e => {
   vv.addEventListener('resize', queue);
   vv.addEventListener('scroll', queue);
   window.addEventListener('scroll', queue, { passive: true });
+})();
+
+/* ---------- site links ---------- */
+
+// Links leave the bar for the menu one at a time, in this order, just before the
+// centred James Maye link would come within GAP px of its neighbours.
+(function fitSiteLinks() {
+  const GAP = 16;
+  const MIN_NAME = 80; // room kept for the filename left of the centred link
+  const ORDER = ['table', 'doi', 'home'];
+  const bar = $('.bar');
+  const home = $('.home');
+  const nav = $('.links');
+  const name = $('.name');
+  const fileName = $('#fileName');
+  // the menu lives inside .bar too, so only look at the bar's own links
+  const inBar = id => bar.querySelector(`:scope > [data-link="${id}"], .links > [data-link="${id}"]`);
+  const inMenu = id => menu.querySelector(`[data-link="${id}"]`);
+
+  function fits() {
+    if (home.hidden) return true;
+    const h = home.getBoundingClientRect();
+    const right = (nav.hidden ? $('.tools') : nav).getBoundingClientRect().left;
+    const left = name.getBoundingClientRect().left + MIN_NAME;
+    return h.right + GAP <= right && h.left - GAP >= left;
+  }
+
+  function fit() {
+    fileName.style.maxWidth = '';
+    ORDER.forEach(id => { inBar(id).hidden = false; inMenu(id).hidden = true; });
+    nav.hidden = false;
+    for (const id of ORDER) {
+      if (fits()) break;
+      inBar(id).hidden = true;
+      inMenu(id).hidden = false;
+      nav.hidden = !nav.querySelector('a:not([hidden])');
+    }
+    $('.menu-links').hidden = !ORDER.some(id => !inMenu(id).hidden);
+    // stop a long filename running under the centred link (16px left for the unsaved dot)
+    if (!home.hidden) {
+      const room = home.getBoundingClientRect().left - GAP - fileName.getBoundingClientRect().left - 16;
+      fileName.style.maxWidth = Math.max(0, room) + 'px';
+    }
+  }
+
+  fit();
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(bar);
+  else window.addEventListener('resize', fit);
+  // Equity arrives later than first paint on the website and changes the link's width
+  if (document.fonts) {
+    document.fonts.ready.then(fit);
+    document.fonts.addEventListener?.('loadingdone', fit);
+  }
 })();
 
 /* ---------- leaving ---------- */

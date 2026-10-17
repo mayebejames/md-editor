@@ -73,7 +73,8 @@ date: 17^th^ October 2026
   - Proportional: `"Equity A"` (if installed locally) → `equity_a` (web font from the site, see below) → Charter → Georgia → serif.
 - **Font size** can be adjusted for both fonts.
 - **Text column** is centred, defaults to `90ch`, and its width can be adjusted in Settings. On phones it is the full width minus a 16px gutter.
-- On touch devices the textarea font-size never drops below 16px, because iOS zooms on focus otherwise.
+- Default text size is 17px, or 15px on phone-sized screens (smallest screen dimension ≤ 600px). This is judged by device, not window width. Reset in Settings returns to the device default.
+- iOS zooms the page when you focus text under 16px. On iOS only, `maximum-scale=1` is added to the viewport meta to stop this (iOS still allows pinch-zoom), so the size slider works below 16px. It is not added elsewhere, because Android would lose pinch-zoom.
 
 ### Equity web font (served by the website; ignored gracefully under `file://`)
 

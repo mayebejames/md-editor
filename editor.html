@@ -301,8 +301,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   .find .count { min-width: 48px; }
 }
 @media (pointer: coarse) {
-  /* iOS zooms into inputs under 16px */
-  .editor { font-size: max(16px, var(--fs)); }
   .find input[type="text"] { font-size: 16px; }
   .icon { width: 40px; height: 40px; }
   kbd { display: none; }
@@ -433,7 +431,9 @@ const canFS = 'showOpenFilePicker' in window && 'showSaveFilePicker' in window;
 const KEY_AUTO = 'mded.autosave';
 const KEY_PREV = 'mded.previous';
 const KEY_SET = 'mded.settings';
-const DEFAULTS = { font: 'mono', size: 17, col: 90 };
+// phone-sized screens (by device, not window, so a narrow desktop window keeps 17px)
+const smallScreen = Math.min(screen.width, screen.height) <= 600;
+const DEFAULTS = { font: 'mono', size: smallScreen ? 15 : 17, col: 90 };
 const FILE_TYPES = [{ description: 'Markdown', accept: { 'text/plain': ['.md', '.markdown', '.txt'] } }];
 
 // localStorage can throw (private mode, blocked storage), so every access is guarded.
@@ -1389,6 +1389,13 @@ function toast(msg) {
     const [label, key] = b.dataset.tip.split('|');
     b.title = `${label} (${mod}${key})`;
   });
+  // iOS zooms the page when focusing text under 16px. maximum-scale=1 stops that
+  // (iOS still allows pinch-zoom), so any text size works. Not used elsewhere, as
+  // Android would also lose pinch-zoom.
+  if (isIOS) {
+    const vp = document.querySelector('meta[name="viewport"]');
+    vp.content += ', maximum-scale=1';
+  }
   if (!isIOS) $('#fileInput').accept = '.md,.markdown,.txt,text/markdown,text/plain';
   if (!canFS) menu.querySelector('[data-act="saveAs"]').hidden = true;
 
